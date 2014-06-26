@@ -1,203 +1,241 @@
 package aws
 
 import (
-	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/xml"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"sort"
-	"strings"
-	"time"
+  "bytes"
+  "crypto/hmac"
+  "crypto/sha256"
+  "encoding/hex"
+  "encoding/json"
+  "fmt"
+  "io"
+  "io/ioutil"
+  "net/http"
+  //"net/url"
+  "os"
+  "sort"
+  "strings"
+  "time"
 )
 
 const (
-	EC2Host    = "ec2.amazonaws.com"
-	EC2Version = "2011-11-01"
+  OpsWorksSignatureAlgorithm = "AWS4-HMAC-SHA256"
+  OpsWorksHost = "opsworks.us-east-1.amazonaws.com"
+  OpsWorksRegion = "us-east-1"
+  OpsWorksServiceName = "opsworks"
+  OpsWorksVersion = "2013-02-18"
+  OpsworksTargetPrefix = "OpsWorks_20130218"
 )
 
-var TemplateRequest = Request{
-	Host:    EC2Host,
-	Version: EC2Version,
-	Key:     os.Getenv("AWS_ACCESS_KEY_ID"),
-	Secret:  os.Getenv("AWS_SECRET_ACCESS_KEY"),
+func Do(request *Request, v interface{}) error {
+  request.Header.Set("X-Amz-Target", OpsworksTargetPrefix + "." + "DescribeInstances")
+  request.Header.Set("Host", OpsWorksHost)
+  request.Header.Set("Content-Type", "application/x-amz-json-1.1")
+  request.Header.Set("X-Amz-Date", time.Now().UTC().Format("20060102T150405Z"))
+  request.Sign()
+  client := http.DefaultClient
+
+  response, err := client.Do((*http.Request)(request))
+
+  if err != nil {
+    fmt.Println("FAIL")
+    fmt.Println(err.Error())
+    return err
+  }
+
+  return unmarshal(request, response, v)
 }
 
-type Param struct {
-	Key string
-	Val string
+type Request http.Request
+
+func NewRequest(method, urlStr string, body io.Reader) (*Request, error) {
+  r, e := http.NewRequest(method, urlStr, body)
+  request := (*Request)(r)
+  return request, e
 }
 
-func (p *Param) Encode() string {
-	return p.Key + "=" + url.QueryEscape(p.Val)
+type SigningHeaders []string
+
+func (request *Request) signingHeaders() *SigningHeaders {
+  headerNames := make(SigningHeaders, 0)
+  for headerName, _ := range request.Header {
+    if len(strings.TrimSpace(headerName)) > 0 {
+      headerNames = append(headerNames, headerName)
+    }
+  }
+
+  sort.Strings(headerNames)
+
+  return &headerNames
 }
 
-type Params []*Param
-
-func (p *Params) Add(key, val string) {
-	*p = append(*p, &Param{key, val})
+func (headers *SigningHeaders) String() string {
+  hdrs := make([]string, 0)
+  for _, headerName := range *headers {
+    hdrName := strings.TrimSpace(strings.ToLower(headerName))
+    if len(hdrName) > 0 {
+      hdrs = append(hdrs, hdrName)
+    }
+  }
+  return strings.Join(hdrs, ";")
 }
 
-func (p *Params) Len() int {
-	return len(*p)
+type CanonicalHeaders map[string]string
+
+func (request *Request) canonicalHeaders() *CanonicalHeaders {
+  headers := make(CanonicalHeaders, 0)
+  for _, headerName := range *request.signingHeaders() {
+    normalisedName  := strings.TrimSpace(headerName)
+    normalisedValue := strings.TrimSpace(strings.Join(request.Header[headerName], " "))
+    if len(normalisedName) > 0 && len(normalisedValue) > 0 {
+      headers[normalisedName] = normalisedValue
+    }
+  }
+
+  return &headers
 }
 
-func (p *Params) Less(i, j int) bool {
-	a := *p
-	return a[i].Key < a[j].Key
+func (headers *CanonicalHeaders) String() string {
+  canonicalised := make([]string, 0)
+  for headerName, headerValue := range *headers {
+    normalisedName := strings.TrimSpace(strings.ToLower(headerName))
+    normalisedValue := strings.TrimSpace(headerValue)
+    canonicalised = append(canonicalised, normalisedName + ":" + normalisedValue)
+  }
+
+  return strings.Join(canonicalised, "\n") + "\n"
 }
 
-func (p *Params) Swap(i, j int) {
-	a := *p
-	a[i], a[j] = a[j], a[i]
+
+func (request *Request) HashedPayload() string {
+  body, _ := ioutil.ReadAll(request.Body)
+  request.Body = ioutil.NopCloser(bytes.NewReader(body))
+  hashed := sha256.Sum256(body)
+  return hex.EncodeToString(hashed[:])
 }
 
-func (p *Params) Encode() (s string) {
-	parts := make([]string, len(*p))
-	for i, param := range *p {
-		parts[i] = param.Encode()
-	}
-	return strings.Join(parts, "&")
+func hashString(to_hash string) string {
+  hashed := sha256.Sum256([]byte(to_hash))
+  return hex.EncodeToString(hashed[:])
 }
 
-type Request struct {
-	Host    string
-	Key     string
-	Secret  string
-	Version string
-	Params
+func (request *Request) generateCanonicalRequest() string {
+  return strings.Join([]string{
+    request.Method,
+    request.URL.Path,
+    request.URL.RawQuery,
+    request.canonicalHeaders().String(),
+    request.signingHeaders().String(),
+    request.HashedPayload(),
+  }, "\n")
 }
 
-func (r *Request) Encode() string {
-	r.Add("AWSAccessKeyId", r.Key)
-	r.Add("SignatureMethod", "HmacSHA256")
-	r.Add("SignatureVersion", "2")
-	r.Add("Version", r.Version)
-	r.Add("Timestamp", time.Now().UTC().Format(time.RFC3339))
-
-	sort.Sort(r)
-
-	data := strings.Join([]string{
-		"POST",
-		r.Host,
-		"/",
-		r.Params.Encode(),
-	}, "\n")
-
-	h := hmac.New(sha256.New, []byte(r.Secret))
-	h.Write([]byte(data))
-
-	sig := base64.StdEncoding.EncodeToString(h.Sum([]byte{}))
-
-	r.Add("Signature", sig)
-
-	return r.Params.Encode()
+func(request *Request) generateCanonicalRequestHash() string {
+  return hashString(request.generateCanonicalRequest())
 }
 
-type Header struct {
-	RequestId string
+func (request *Request) CredentialScopeString() string {
+  return strings.Join([]string{
+    time.Now().UTC().Format("20060102"),
+    OpsWorksRegion,
+    OpsWorksServiceName,
+    "aws4_request",
+  }, "/")
 }
 
-type Error struct {
-	Header
-	Errors []struct {
-		Code    string
-		Message string
-	} `xml:"Errors>Error"`
+func (request *Request) CredentialString() string {
+  return strings.Join([]string{
+    os.Getenv("AWS_ACCESS_KEY_ID"),
+    request.CredentialScopeString(),
+  }, "/")
 }
 
-// Example:
-//  aws: ->
-//    AuthFailure: "There is a problem with your secret"
-//    OMG: "You're servers are all gone!"
-func (err *Error) Error() string {
-	var s string
-	for _, e := range err.Errors {
-		s += fmt.Sprintf("\t%s: %q\n", e.Code, e.Message)
-	}
-
-	return fmt.Sprintf("aws: ->\n%s", s)
+func (request *Request) AmazonDateString() string {
+  return strings.TrimSpace(strings.Join(request.Header["X-Amz-Date"], ""))
 }
 
-func Do(r *Request, v interface{}) error {
-	// charset=utf-8 is required by the SDB endpoint
-	// otherwise it fails signature checking.
-	// ec2 endpoint seems to be fine with it either way
-	res, err := http.Post(
-		"https://"+r.Host,
-		"application/x-www-form-urlencoded; charset=utf-8",
-		bytes.NewBufferString(r.Encode()),
-	)
-	if err != nil {
-		return err
-	}
-
-	return unmarshal(res, v)
+func (request *Request) SigningString() string {
+  return strings.Join([]string{
+    OpsWorksSignatureAlgorithm,
+    request.AmazonDateString(),
+    request.CredentialScopeString(),
+    request.generateCanonicalRequestHash(),
+  }, "\n")
 }
 
-func unmarshal(res *http.Response, v interface{}) error {
-	if res.StatusCode != http.StatusOK {
-		e := new(Error)
-		b, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return err
-		}
+func (request *Request) SigningKey() []byte {
+  secret := os.Getenv("AWS_SECRET_ACCESS_KEY")
+  aws_secret := "AWS4" + secret
+  kDate := HMAC_SHA256([]byte(aws_secret), request.AmazonDateString())
+  kRegion := HMAC_SHA256(kDate, OpsWorksRegion)
+  kService := HMAC_SHA256(kRegion, OpsWorksServiceName)
+  return HMAC_SHA256(kService, "aws4_request")
+}
 
-		err = xml.Unmarshal(b, e)
-		if err != nil {
-			return err
-		}
-		return e
-	}
+func HMAC_SHA256(key []byte, data string) []byte {
+  h := hmac.New(sha256.New, key)
+  h.Write([]byte(data))
+  return h.Sum([]byte{})
+}
 
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	return xml.Unmarshal(b, v)
+func (request *Request) Sign() {
+  signature := hex.EncodeToString( HMAC_SHA256(request.SigningKey(), request.SigningString()) )
+  request.Header.Set("Authorization", OpsWorksSignatureAlgorithm +
+  " Credential=" + request.CredentialString() +
+  ", SignedHeaders=" + request.signingHeaders().String() +
+  ", Signature=" + signature,
+)
+}
+
+func unmarshal(req *Request, res *http.Response, v interface{}) error {
+  if res.StatusCode == http.StatusOK {
+    fmt.Println("SUCCESS")
+    b, err := ioutil.ReadAll(res.Body)
+    if err != nil {
+      return err
+    }
+    fmt.Printf("%s", b)
+    return json.Unmarshal(b, v)
+  }
+  _, err := ioutil.ReadAll(res.Body)
+  if err != nil {
+    return err
+  }
+
+  fmt.Printf("An error occurred! Code: %d\n", res.StatusCode)
+  fmt.Println(req.Header)
+  return nil
 }
 
 // Utils
 
 // Used for debugging
 type logReader struct {
-	r io.Reader
+  r io.Reader
 }
 
 func (lr *logReader) Read(b []byte) (n int, err error) {
-	n, err = lr.r.Read(b)
-	fmt.Print(string(b))
-	return
+  n, err = lr.r.Read(b)
+  fmt.Print(string(b))
+  return
 }
 
 // Sugar
 type DescribeInstancesResponse struct {
-	Header
-	Reservations []Reservation `xml:"reservationSet>item"`
-}
-
-type Reservation struct {
-	ReservationId string
-	Instances     []Instance `xml:"instancesSet>item"`
+  Instances []Instance
 }
 
 type Instance struct {
-	InstanceId string
-	StateName  string `xml:"instanceState>name"`
-	DnsName    string
-	IpAddress  string
+  AmiId string
+  Status  string
+  Hostname    string
+  IpAddress  string
 }
 
 func DescribeInstances() (*DescribeInstancesResponse, error) {
-	r := TemplateRequest
-	r.Add("Action", "DescribeInstances")
+  bodyEncoded:=""
 
-	v := new(DescribeInstancesResponse)
-	return v, Do(&r, v)
+  r, _ := NewRequest("POST", "https://"+OpsWorksHost+"/", strings.NewReader(bodyEncoded))
+
+  v := new(DescribeInstancesResponse)
+  return v, Do(r, v)
 }
