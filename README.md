@@ -1,10 +1,12 @@
-# aws.go - A simple AWS client for Go.
+# aws - A client for various AWS services, written in Golang.
 
 # Install
 
-	$ go get github.com/bmizerany/aws.go
+	$ go get github.com/bwilkins/aws
 
 ## Use
+
+NB: Application will require `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to be set in the environment (currently).
 
 	// NOTE: This project is still a work in progress.  For those of you who
 	// see where I'm going with it and want to help, please do!
@@ -12,69 +14,22 @@
 	package main
 
 	import (
-		"github.com/bmizerany/aws"
+		"github.com/bwilkins/aws/opsworks"
 		"log"
 	)
 
 	// Assumes AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are set in ENV.
 	func main() {
-		v, err := aws.DescribeInstances()
-		if err != nil {
-			log.Fatal(err)
-		}
+                request := opsworks.DescribeInstancesRequest{StackId: "your-stack-id"}
+	        response, err := opsworks.DescribeInstances(request)
 
-		for _, r := range v.Reservations {
-			for _, i := range r.Instances {
-				log.Println("%s -> %s", i.DnsName, i.StateName)
-			}
-		}
-
-		////
-		// Custom (i.e. No sugar yet)
-
-		r := aws.TemplateRequest // Make a copy of the template request
-
-		// Set the Action parameter
-		r.Add("Action", "DescribeKeyPairs")
-
-		// Describe the response you expect using
-		// http://weekly.golang.org/pkg/encoding/xml/#Unmarshal as a guide
-		type DescribeKeyPairsResponse struct {
-			aws.Header       // Holds the RequestId
-			Keys       []Key `xml:"keySet>item"`
-		}
-
-		type Key struct {
-			KeyName        string
-			KeyFingerprint string
-		}
-
-		v := new(DescribeKeyPairsResponse)
-		aws.Do(r, v)
-
-		log.Printf("%v", v)
+		log.Printf("%v", response)
 	}
 
-## Change API/Creds
-
-You can change the API and Credentials, used by the Sugar commands, by updating `aws.TemplateRequest`.
-
-## Running tests
-
-NOTE: Most Unix/Linux systems will not log commands to history if they start with spaces; BEWARE if yours does not.
-
-	$ cd /path/to/repo
-	$ git config add aws.key <aws-key>
-	$ git config add aws.secret <aws-secret>
-	$ ./development.sh gotest // Does NOT create resources
-
-or
-
-	$ <space><space> AWS_SECRET_ACCESS_KEY=<secret> AWS_ACCESS_KEY_ID=<key> gotest
 
 ## LICENCES
 
-Copyright (C) 2011 by Blake Mizerany (@bmizerany)
+Copyright (C) 2014 by Brett Wilkins (@bjmaz) `<brett@brett.geek.nz>`
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -92,5 +47,5 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE. 
+THE SOFTWARE.
 
