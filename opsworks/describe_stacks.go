@@ -27,15 +27,30 @@ type Stack struct {
   Region,
   ServiceRoleArn,
   StackId,
-  UseCustomCookbooks,
-  UseOpsworksSecurityGroups,
   VpcId string
-  Attributes,
-  ChefConfiguration,
-  ConfigurationManager,
-  CustomCookbooksSource map[string]string
+  Attributes map[string]string
+  CustomCookbooksSource TCustomCookbooksSource
+  ChefConfiguration TChefConfiguration
+  UseCustomCookbooks,
+  UseOpsworksSecurityGroups bool
 }
 
+type TChefConfiguration struct {
+  BerkshelfVersion string
+  ManageBerkshelf bool
+}
+type TConfigurationManager struct {
+  Name, Version string
+}
+
+type TCustomCookbooksSource struct {
+  Password,
+  Revision,
+  SshKey,
+  Type,
+  Url,
+  Username string
+}
 
 func DescribeStacks(request DescribeStacksRequest) (*DescribeStacksResponse, error) {
   bodyEncoded, err := json.Marshal(request)

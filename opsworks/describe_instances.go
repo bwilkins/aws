@@ -19,10 +19,8 @@ type Instance struct {
   AutoScalingType,
   AvailabilityZone,
   CreatedAt,
-  EbsOptimized,
   Ec2InstanceId,
   Hostname,
-  InstallUpdatesOnBoot,
   InstanceId,
   InstanceProfileArn,
   InstanceType,
@@ -40,6 +38,8 @@ type Instance struct {
   VirtualizationType string
   LayerIds,
   SecurityGroupIds []string
+  EbsOptimized,
+  InstallUpdatesOnBoot bool
 }
 
 func DescribeInstances(request DescribeInstancesRequest) (*DescribeInstancesResponse, error) {
