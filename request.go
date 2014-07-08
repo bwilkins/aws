@@ -18,16 +18,17 @@ import (
 
 type Request struct {
   mRequest *http.Request
+  mAction string
   mSigningHeaders *SigningHeaders
   mCanonicalHeaders *CanonicalHeaders
   mEndpointDefinition EndpointDefinition
   now time.Time
 }
 
-func NewRequest(method string, endpoint EndpointDefinition, body io.Reader) (*Request, error) {
+func NewRequest(method, action string, endpoint EndpointDefinition, body io.Reader) (*Request, error) {
   urlStr := "https://" + endpoint.Host + "/"
   r, e := http.NewRequest(method, urlStr, body)
-  request := Request{r, nil, nil, endpoint, time.Now().UTC()}
+  request := Request{r, action, nil, nil, endpoint, time.Now().UTC()}
   return &request, e
 }
 
@@ -137,7 +138,7 @@ func (request *Request) Sign() {
 }
 
 func (request *Request) Do(v interface{}) error {
-  request.mRequest.Header.Set("X-Amz-Target", request.mEndpointDefinition.TargetPrefix + "." + "DescribeInstances")
+  request.mRequest.Header.Set("X-Amz-Target", request.mEndpointDefinition.TargetPrefix + "." + request.mAction)
   request.mRequest.Header.Set("Host", request.mEndpointDefinition.Host)
   request.mRequest.Header.Set("Content-Type", "application/x-amz-json-1.1")
   request.mRequest.Header.Set("X-Amz-Date", request.now.Format("20060102T150405Z"))

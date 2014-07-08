@@ -48,7 +48,7 @@ func DescribeInstances(request DescribeInstancesRequest) (*DescribeInstancesResp
     return nil, err
   }
 
-  r, _ := aws.NewRequest("POST", EndpointDefinition, bytes.NewReader(bodyEncoded))
+  r, _ := aws.NewRequest("POST", "DescribeInstances", EndpointDefinition, bytes.NewReader(bodyEncoded))
 
   v := new(DescribeInstancesResponse)
   return v, r.Do(v)
