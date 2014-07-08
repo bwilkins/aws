@@ -12,18 +12,22 @@ import (
   "os"
   "github.com/bwilkins/aws/util"
   "time"
+  "encoding/json"
+  "fmt"
 )
 
 type Request struct {
   mRequest *http.Request
   mSigningHeaders *SigningHeaders
   mCanonicalHeaders *CanonicalHeaders
+  mEndpointDefinition EndpointDefinition
   now time.Time
 }
 
-func NewRequest(method, urlStr string, body io.Reader) (*Request, error) {
+func NewRequest(method string, endpoint EndpointDefinition, body io.Reader) (*Request, error) {
+  urlStr := "https://" + endpoint.Host + "/"
   r, e := http.NewRequest(method, urlStr, body)
-  request := Request{r, nil, nil, time.Now().UTC()}
+  request := Request{r, nil, nil, endpoint, time.Now().UTC()}
   return &request, e
 }
 
@@ -84,8 +88,8 @@ func(request *Request) generateCanonicalRequestHash() string {
 func (request *Request) CredentialScopeString() string {
   return strings.Join([]string{
     request.HashingDate(),
-    OpsWorksRegion,
-    OpsWorksServiceName,
+    request.mEndpointDefinition.Region,
+    request.mEndpointDefinition.ServiceName,
     "aws4_request",
   }, "/")
 }
@@ -103,7 +107,7 @@ func (request *Request) AmazonDateString() string {
 
 func (request *Request) StringToSign() string {
   return strings.Join([]string{
-    OpsWorksSignatureAlgorithm,
+    request.mEndpointDefinition.SignatureAlgorithm,
     request.AmazonDateString(),
     request.CredentialScopeString(),
     request.generateCanonicalRequestHash(),
@@ -114,8 +118,8 @@ func (request *Request) SigningKey() []byte {
   secret := os.Getenv("AWS_SECRET_ACCESS_KEY")
   aws_secret := "AWS4" + secret
   kDate := util.HMAC_SHA256([]byte(aws_secret), request.HashingDate())
-  kRegion := util.HMAC_SHA256(kDate, OpsWorksRegion)
-  kService := util.HMAC_SHA256(kRegion, OpsWorksServiceName)
+  kRegion := util.HMAC_SHA256(kDate, request.mEndpointDefinition.Region)
+  kService := util.HMAC_SHA256(kRegion, request.mEndpointDefinition.ServiceName)
   return util.HMAC_SHA256(kService, "aws4_request")
 }
 
@@ -125,9 +129,46 @@ func (request *Request) HashingDate() string {
 
 func (request *Request) Sign() {
   signature := hex.EncodeToString( util.HMAC_SHA256(request.SigningKey(), request.StringToSign()) )
-  request.mRequest.Header.Set("Authorization", OpsWorksSignatureAlgorithm +
+  request.mRequest.Header.Set("Authorization", request.mEndpointDefinition.SignatureAlgorithm +
     " Credential=" + request.CredentialString() +
     ", SignedHeaders=" + request.signingHeaders().String() +
     ", Signature=" + signature,
   )
+}
+
+func (request *Request) Do(v interface{}) error {
+  request.mRequest.Header.Set("X-Amz-Target", request.mEndpointDefinition.TargetPrefix + "." + "DescribeInstances")
+  request.mRequest.Header.Set("Host", request.mEndpointDefinition.Host)
+  request.mRequest.Header.Set("Content-Type", "application/x-amz-json-1.1")
+  request.mRequest.Header.Set("X-Amz-Date", request.now.Format("20060102T150405Z"))
+  request.Sign()
+  client := http.DefaultClient
+
+  response, err := client.Do(request.mRequest)
+
+  if err != nil {
+    fmt.Println("FAIL")
+    fmt.Println(err.Error())
+    return err
+  }
+
+  return unmarshal(request, response, v)
+}
+
+
+func unmarshal(req *Request, res *http.Response, v interface{}) error {
+  if res.StatusCode == http.StatusOK {
+    b, err := ioutil.ReadAll(res.Body)
+    if err != nil {
+      return err
+    }
+    return json.Unmarshal(b, v)
+  }
+
+  _, bodyReadErr := ioutil.ReadAll(res.Body)
+  if bodyReadErr != nil {
+    return bodyReadErr
+  }
+
+  return nil
 }
