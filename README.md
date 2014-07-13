@@ -1,5 +1,11 @@
 # aws - A client for various AWS services, written in Golang.
 
+# Disclaimer
+
+Currently uses `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` ENV variables as id/secret sources.
+
+TODO: remove this fetching of ENV variables from this library - that should be in the domain of the user application!
+
 # Install
 
 	$ go get github.com/bwilkins/aws
