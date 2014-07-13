@@ -9,7 +9,6 @@ import (
   "crypto/sha256"
   "encoding/hex"
   "sort"
-  "os"
   "github.com/bwilkins/aws/util"
   "time"
   "encoding/json"
@@ -97,7 +96,7 @@ func (request *Request) CredentialScopeString() string {
 
 func (request *Request) CredentialString() string {
   return strings.Join([]string{
-    os.Getenv("AWS_ACCESS_KEY_ID"),
+    AccessCredentials.AccessId,
     request.CredentialScopeString(),
   }, "/")
 }
@@ -116,7 +115,7 @@ func (request *Request) StringToSign() string {
 }
 
 func (request *Request) SigningKey() []byte {
-  secret := os.Getenv("AWS_SECRET_ACCESS_KEY")
+  secret := AccessCredentials.SecretKey
   aws_secret := "AWS4" + secret
   kDate := util.HMAC_SHA256([]byte(aws_secret), request.HashingDate())
   kRegion := util.HMAC_SHA256(kDate, request.mEndpointDefinition.Region)

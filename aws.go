@@ -8,3 +8,14 @@ type EndpointDefinition struct {
   Version,
   TargetPrefix string
 }
+
+type Credentials struct {
+  AccessId,
+  SecretKey string
+}
+
+var AccessCredentials Credentials
+
+func SetAccessCredentials(creds Credentials) {
+  AccessCredentials = creds
+}
