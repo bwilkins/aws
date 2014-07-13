@@ -24,8 +24,8 @@ NB: Application will require `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to 
 		"log"
 	)
 
-	// Assumes AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are set in ENV.
 	func main() {
+                aws.SetAccesssCredentials( aws.Credentials{"access_id", "secret_key"} )
                 request := opsworks.DescribeInstancesRequest{StackId: "your-stack-id"}
 	        response, err := opsworks.DescribeInstances(request)
 
