@@ -2,7 +2,7 @@ package opsworks
 
 import "bytes"
 import "encoding/json"
-import "github.com/bwilkins/aws"
+import "github.com/bwilkins/aws/signing/v4"
 
 type DescribeInstancesResponse struct {
   Instances []Instance
@@ -48,7 +48,7 @@ func DescribeInstances(request DescribeInstancesRequest) (*DescribeInstancesResp
     return nil, err
   }
 
-  r, _ := aws.NewRequest("POST", "DescribeInstances", EndpointDefinition, bytes.NewReader(bodyEncoded))
+  r, _ := v4.NewRequest("POST", "DescribeInstances", EndpointDefinition, bytes.NewReader(bodyEncoded))
 
   v := new(DescribeInstancesResponse)
   return v, r.Do(v)

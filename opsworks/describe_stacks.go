@@ -2,7 +2,7 @@ package opsworks
 
 import "bytes"
 import "encoding/json"
-import "github.com/bwilkins/aws"
+import "github.com/bwilkins/aws/signing/v4"
 
 type DescribeStacksRequest struct {
   StackIds []string `json:",omitempty"`
@@ -58,7 +58,7 @@ func DescribeStacks(request DescribeStacksRequest) (*DescribeStacksResponse, err
     return nil, err
   }
 
-  r, _ := aws.NewRequest("POST", "DescribeStacks", EndpointDefinition, bytes.NewReader(bodyEncoded))
+  r, _ := v4.NewRequest("POST", "DescribeStacks", EndpointDefinition, bytes.NewReader(bodyEncoded))
 
   v := new(DescribeStacksResponse)
   return v, r.Do(v)

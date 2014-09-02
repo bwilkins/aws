@@ -1,4 +1,4 @@
-package aws
+package v4
 
 import (
   "net/http"
@@ -9,7 +9,8 @@ import (
   "crypto/sha256"
   "encoding/hex"
   "sort"
-  "github.com/bwilkins/aws/util"
+  "github.com/bwilkins/aws"
+  "github.com/bwilkins/aws/signing/util"
   "time"
   "encoding/json"
   "fmt"
@@ -20,11 +21,11 @@ type Request struct {
   mAction string
   mSigningHeaders *SigningHeaders
   mCanonicalHeaders *CanonicalHeaders
-  mEndpointDefinition EndpointDefinition
+  mEndpointDefinition aws.EndpointDefinition
   now time.Time
 }
 
-func NewRequest(method, action string, endpoint EndpointDefinition, body io.Reader) (*Request, error) {
+func NewRequest(method, action string, endpoint aws.EndpointDefinition, body io.Reader) (*Request, error) {
   urlStr := "https://" + endpoint.Host + "/"
   r, e := http.NewRequest(method, urlStr, body)
   request := Request{r, action, nil, nil, endpoint, time.Now().UTC()}
@@ -96,7 +97,7 @@ func (request *Request) CredentialScopeString() string {
 
 func (request *Request) CredentialString() string {
   return strings.Join([]string{
-    AccessCredentials.AccessId,
+    aws.AccessCredentials.AccessId,
     request.CredentialScopeString(),
   }, "/")
 }
@@ -115,7 +116,7 @@ func (request *Request) StringToSign() string {
 }
 
 func (request *Request) SigningKey() []byte {
-  secret := AccessCredentials.SecretKey
+  secret := aws.AccessCredentials.SecretKey
   aws_secret := "AWS4" + secret
   kDate := util.HMAC_SHA256([]byte(aws_secret), request.HashingDate())
   kRegion := util.HMAC_SHA256(kDate, request.mEndpointDefinition.Region)

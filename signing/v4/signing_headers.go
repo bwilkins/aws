@@ -1,4 +1,4 @@
-package aws
+package v4
 
 import "strings"
 

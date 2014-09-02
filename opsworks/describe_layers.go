@@ -2,7 +2,7 @@ package opsworks
 
 import "bytes"
 import "encoding/json"
-import "github.com/bwilkins/aws"
+import "github.com/bwilkins/aws/signing/v4"
 
 type DescribeLayersRequest struct {
   LayerIds []string `json:",omitempty"`
@@ -58,7 +58,7 @@ func DescribeLayers(request DescribeLayersRequest) (*DescribeLayersResponse, err
     return nil, err
   }
 
-  r, _ := aws.NewRequest("POST", "DescribeLayers", EndpointDefinition, bytes.NewReader(bodyEncoded))
+  r, _ := v4.NewRequest("POST", "DescribeLayers", EndpointDefinition, bytes.NewReader(bodyEncoded))
 
   v := new(DescribeLayersResponse)
   return v, r.Do(v)
