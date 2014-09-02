@@ -4,3 +4,5 @@ _obj
 _test*
 *.bak
 *.swp
+.idea/
+.idea/*
