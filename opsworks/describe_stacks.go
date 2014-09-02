@@ -1,6 +1,6 @@
 package opsworks
 
-import "github.com/bwilkins/aws/signing/v4"
+import "github.com/bwilkins/aws/request"
 
 type DescribeStacksRequest struct {
   StackIds []string `json:",omitempty"`
@@ -50,8 +50,8 @@ type TCustomCookbooksSource struct {
   Username string
 }
 
-func DescribeStacks(request DescribeStacksRequest) (*DescribeStacksResponse, error) {
-  r, _ := v4.NewRequest("POST", "DescribeStacks", EndpointDefinition, request)
+func DescribeStacks(req DescribeStacksRequest) (*DescribeStacksResponse, error) {
+  r, _ := request.NewRequest("POST", "DescribeStacks", EndpointDefinition, req)
 
   v := new(DescribeStacksResponse)
   return v, r.Do(v)

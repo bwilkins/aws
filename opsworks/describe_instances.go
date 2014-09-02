@@ -1,6 +1,6 @@
 package opsworks
 
-import "github.com/bwilkins/aws/signing/v4"
+import "github.com/bwilkins/aws/request"
 
 type DescribeInstancesResponse struct {
   Instances []Instance
@@ -40,8 +40,9 @@ type Instance struct {
   InstallUpdatesOnBoot bool
 }
 
-func DescribeInstances(request DescribeInstancesRequest) (*DescribeInstancesResponse, error) {
-  r, _ := v4.NewRequest("POST", "DescribeInstances", EndpointDefinition, request)
+func DescribeInstances(req DescribeInstancesRequest) (*DescribeInstancesResponse, error) {
+  r, _ := request.NewRequest("POST", "DescribeInstances", EndpointDefinition, req)
+
   v := new(DescribeInstancesResponse)
   return v, r.Do(v)
 }

@@ -4,7 +4,8 @@ import "github.com/bwilkins/aws"
 
 
 var EndpointDefinition = aws.EndpointDefinition{
-  SignatureAlgorithm: "AWS4-HMAC-SHA256",
+  SignatureVersion: 4,
+  DataInterchangeFormat: "json",
   Host: "opsworks.us-east-1.amazonaws.com",
   Region: "us-east-1",
   ServiceName: "opsworks",

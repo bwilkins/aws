@@ -1,6 +1,6 @@
 package opsworks
 
-import "github.com/bwilkins/aws/signing/v4"
+import "github.com/bwilkins/aws/request"
 
 type DescribeAppsResponse struct {
   Apps []App
@@ -50,11 +50,9 @@ type SslConfigurationBlock struct {
   PrivateKey string
 }
 
-func DescribeApps(request DescribeAppsRequest) (*DescribeAppsResponse, error) {
-
-
-  r, _ := v4.NewRequest("POST", "DescribeApps", EndpointDefinition, request)
-
+func DescribeApps(req DescribeAppsRequest) (*DescribeAppsResponse, error) {
+  r, _ := request.NewRequest("POST", "DescribeApps", EndpointDefinition, req)
+	
   v := new(DescribeAppsResponse)
   return v, r.Do(v)
 }

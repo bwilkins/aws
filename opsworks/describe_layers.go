@@ -1,6 +1,6 @@
 package opsworks
 
-import "github.com/bwilkins/aws/signing/v4"
+import "github.com/bwilkins/aws/request"
 
 type DescribeLayersRequest struct {
   LayerIds []string `json:",omitempty"`
@@ -50,8 +50,8 @@ type VolumeConfigBlock struct {
   VolumeType string
 }
 
-func DescribeLayers(request DescribeLayersRequest) (*DescribeLayersResponse, error) {
-  r, _ := v4.NewRequest("POST", "DescribeLayers", EndpointDefinition, request)
+func DescribeLayers(req DescribeLayersRequest) (*DescribeLayersResponse, error) {
+  r, _ := request.NewRequest("POST", "DescribeLayers", EndpointDefinition, req)
 
   v := new(DescribeLayersResponse)
   return v, r.Do(v)

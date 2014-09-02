@@ -1,6 +1,6 @@
 package opsworks
 
-import "github.com/bwilkins/aws/signing/v4"
+import "github.com/bwilkins/aws/request"
 
 type DescribeStackSummaryRequest struct {
   StackId string `json:",omitempty"`
@@ -45,8 +45,8 @@ func (i *InstanceCountBlock) Sum() int64 {
 }
 
 
-func DescribeStackSummary(request DescribeStackSummaryRequest) (*DescribeStackSummaryResponse, error) {
-  r, _ := v4.NewRequest("POST", "DescribeStackSummary", EndpointDefinition, request)
+func DescribeStackSummary(req DescribeStackSummaryRequest) (*DescribeStackSummaryResponse, error) {
+  r, _ := request.NewRequest("POST", "DescribeStackSummary", EndpointDefinition, req)
 
   v := new(DescribeStackSummaryResponse)
   return v, r.Do(v)

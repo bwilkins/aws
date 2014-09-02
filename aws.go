@@ -1,12 +1,13 @@
 package aws
 
 type EndpointDefinition struct {
-  SignatureAlgorithm,
+  DataInterchangeFormat,
   Host,
   Region,
   ServiceName,
   Version,
   TargetPrefix string
+  SignatureVersion int
 }
 
 type Credentials struct {
