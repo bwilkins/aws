@@ -1,7 +1,5 @@
 package opsworks
 
-import "bytes"
-import "encoding/json"
 import "github.com/bwilkins/aws/signing/v4"
 
 type DescribeLayersRequest struct {
@@ -53,12 +51,7 @@ type VolumeConfigBlock struct {
 }
 
 func DescribeLayers(request DescribeLayersRequest) (*DescribeLayersResponse, error) {
-  bodyEncoded, err := json.Marshal(request)
-  if err != nil {
-    return nil, err
-  }
-
-  r, _ := v4.NewRequest("POST", "DescribeLayers", EndpointDefinition, bytes.NewReader(bodyEncoded))
+  r, _ := v4.NewRequest("POST", "DescribeLayers", EndpointDefinition, request)
 
   v := new(DescribeLayersResponse)
   return v, r.Do(v)

@@ -1,7 +1,5 @@
 package opsworks
 
-import "bytes"
-import "encoding/json"
 import "github.com/bwilkins/aws/signing/v4"
 
 type DescribeAppsResponse struct {
@@ -53,12 +51,9 @@ type SslConfigurationBlock struct {
 }
 
 func DescribeApps(request DescribeAppsRequest) (*DescribeAppsResponse, error) {
-  bodyEncoded, err := json.Marshal(request)
-  if err != nil {
-    return nil, err
-  }
 
-  r, _ := v4.NewRequest("POST", "DescribeApps", EndpointDefinition, bytes.NewReader(bodyEncoded))
+
+  r, _ := v4.NewRequest("POST", "DescribeApps", EndpointDefinition, request)
 
   v := new(DescribeAppsResponse)
   return v, r.Do(v)

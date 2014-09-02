@@ -1,7 +1,5 @@
 package opsworks
 
-import "bytes"
-import "encoding/json"
 import "github.com/bwilkins/aws/signing/v4"
 
 type DescribeStackSummaryRequest struct {
@@ -48,12 +46,7 @@ func (i *InstanceCountBlock) Sum() int64 {
 
 
 func DescribeStackSummary(request DescribeStackSummaryRequest) (*DescribeStackSummaryResponse, error) {
-  bodyEncoded, err := json.Marshal(request)
-  if err != nil {
-    return nil, err
-  }
-
-  r, _ := v4.NewRequest("POST", "DescribeStackSummary", EndpointDefinition, bytes.NewReader(bodyEncoded))
+  r, _ := v4.NewRequest("POST", "DescribeStackSummary", EndpointDefinition, request)
 
   v := new(DescribeStackSummaryResponse)
   return v, r.Do(v)

@@ -1,7 +1,5 @@
 package opsworks
 
-import "bytes"
-import "encoding/json"
 import "github.com/bwilkins/aws/signing/v4"
 
 type DescribeInstancesResponse struct {
@@ -43,13 +41,7 @@ type Instance struct {
 }
 
 func DescribeInstances(request DescribeInstancesRequest) (*DescribeInstancesResponse, error) {
-  bodyEncoded, err := json.Marshal(request)
-  if err != nil {
-    return nil, err
-  }
-
-  r, _ := v4.NewRequest("POST", "DescribeInstances", EndpointDefinition, bytes.NewReader(bodyEncoded))
-
+  r, _ := v4.NewRequest("POST", "DescribeInstances", EndpointDefinition, request)
   v := new(DescribeInstancesResponse)
   return v, r.Do(v)
 }

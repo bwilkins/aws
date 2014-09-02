@@ -2,7 +2,6 @@ package v4
 
 import (
   "net/http"
-  "io"
   "io/ioutil"
   "strings"
   "bytes"
@@ -25,7 +24,14 @@ type Request struct {
   now time.Time
 }
 
-func NewRequest(method, action string, endpoint aws.EndpointDefinition, body io.Reader) (*Request, error) {
+func NewRequest(method, action string, endpoint aws.EndpointDefinition, unencoded_request interface {}) (*Request, error) {
+
+	bodyEncoded, err := json.Marshal(unencoded_request)
+	if err != nil {
+		return nil, err
+	}
+
+	body := bytes.NewReader(bodyEncoded)
   urlStr := "https://" + endpoint.Host + "/"
   r, e := http.NewRequest(method, urlStr, body)
   request := Request{r, action, nil, nil, endpoint, time.Now().UTC()}

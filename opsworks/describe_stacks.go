@@ -1,7 +1,5 @@
 package opsworks
 
-import "bytes"
-import "encoding/json"
 import "github.com/bwilkins/aws/signing/v4"
 
 type DescribeStacksRequest struct {
@@ -53,12 +51,7 @@ type TCustomCookbooksSource struct {
 }
 
 func DescribeStacks(request DescribeStacksRequest) (*DescribeStacksResponse, error) {
-  bodyEncoded, err := json.Marshal(request)
-  if err != nil {
-    return nil, err
-  }
-
-  r, _ := v4.NewRequest("POST", "DescribeStacks", EndpointDefinition, bytes.NewReader(bodyEncoded))
+  r, _ := v4.NewRequest("POST", "DescribeStacks", EndpointDefinition, request)
 
   v := new(DescribeStacksResponse)
   return v, r.Do(v)
